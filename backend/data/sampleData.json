@@ -1,0 +1,71 @@
+{
+  "projects": [
+    {
+      "id": "project-1",
+      "name": "Projeto Super-Heróis",
+      "facts": [
+        "fact-1",
+        "fact-2"
+      ],
+      "rules": [
+        "rule-1",
+        "rule-2"
+      ],
+      "responsibleId": "responsible-1"
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule-1",
+      "condition": {
+        "all": [
+          {
+            "or": [
+              {
+                "equals": {
+                  "corre": "sim"
+                }
+              },
+              {
+                "equals": {
+                  "voa": "sim"
+                }
+              }
+            ]
+          },
+          {
+            "equals": {
+              "usa capa": "sim"
+            }
+          }
+        ]
+      },
+      "conclusion": "super homem"
+    },
+    {
+      "id": "rule-2",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "corre": "sim"
+            }
+          },
+          {
+            "equals": {
+              "usa capa": "nao"
+            }
+          },
+          {
+            "equals": {
+              "uniforme": "vermelho"
+            }
+          }
+        ]
+      },
+      "conclusion": "flash"
+    }
+  ],
+  "facts": [],
+  "responsibles": []
+}
