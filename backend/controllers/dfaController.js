@@ -58,25 +58,54 @@ function getPossibleValuesForFact(factName) {
  */
 const startSession = (req, res) => {
   try {
+    const { projectId } = req.body;
+
+    if (!projectId) {
+      return res
+        .status(400)
+        .json({ error: "O parâmetro 'projectId' é obrigatório." });
+    }
+
     const sampleData = loadSampleData();
-    const rules = sampleData.rules;
-    if (!rules || rules.length === 0) {
+
+    // Filtra o projeto pelo ID
+    const project = sampleData.projects.find(
+      project => project.id === projectId.projectId
+    );
+
+    if (!project) {
       return res
         .status(404)
-        .json({ error: 'Nenhuma regra encontrada no sampleData.' });
+        .json({ error: 'Projeto não encontrado no sampleData.' });
     }
-    // Extrai os fatos de todas as regras
+
+    // Obtém as regras associadas ao projeto
+    const rules = sampleData.rules.filter(rule =>
+      project.rules.includes(rule.id)
+    );
+
+    if (!rules || rules.length === 0) {
+      return res.status(404).json({
+        error: 'Nenhuma regra associada encontrada para este projeto.',
+      });
+    }
+
+    // Armazena as regras do projeto na sessão para uso posterior
+    dfaSession.projectRules = rules;
+
+    // Extrai os fatos das regras associadas
     const factSet = new Set();
     rules.forEach(rule => {
       const facts = extractFactsFromCondition(rule.condition);
       facts.forEach(fact => factSet.add(fact));
     });
+
     // Cria um array com a ordem de inserção dos fatos
     const allFacts = Array.from(factSet);
     if (allFacts.length === 0) {
       return res
         .status(400)
-        .json({ error: 'Nenhum fato extraído das regras.' });
+        .json({ error: 'Nenhum fato extraído das regras associadas.' });
     }
 
     // Cria um fluxo linear simples para o DFA
@@ -166,9 +195,8 @@ const submitAnswer = (req, res) => {
         possibleValues: getPossibleValuesForFact(nextFact),
       });
     } else {
-      // Todas as perguntas foram respondidas. Avalia as regras.
-      const sampleData = loadSampleData();
-      const rules = sampleData.rules;
+      // Todas as perguntas foram respondidas. Avalia as regras do projeto.
+      const rules = dfaSession.projectRules || loadSampleData().rules;
       let matchedRule = null;
 
       for (let rule of rules) {
