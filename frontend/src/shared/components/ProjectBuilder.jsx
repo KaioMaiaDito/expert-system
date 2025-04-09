@@ -69,7 +69,7 @@ const ProjectBuilder = ({ onProjectCreated }) => {
     const payload = {
       name,
       description,
-      associatedRules: selectedRules.map(rule => rule.id), // Envia apenas os IDs das regras associadas
+      rules: selectedRules.map(rule => rule.id), // Envia apenas os IDs das regras associadas
     };
 
     try {
