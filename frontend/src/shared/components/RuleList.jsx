@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import AddRule from './RuleBuilder';
 
 const RuleList = () => {
   const [rules, setRules] = useState([]);
@@ -9,10 +10,6 @@ const RuleList = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState(null);
   const [showNewRuleModal, setShowNewRuleModal] = useState(false);
-  const [newRuleData, setNewRuleData] = useState({
-    conclusion: '',
-    condition: '',
-  });
 
   // Fetch rules from API
   const fetchRules = async () => {
@@ -56,24 +53,13 @@ const RuleList = () => {
 
   // Add new rule modal open handler
   const handleAddNewRule = () => {
-    setNewRuleData({ conclusion: '', condition: '' });
     setShowNewRuleModal(true);
   };
 
-  // Submit new rule to server
-  const handleCreateRule = async () => {
-    if (!newRuleData.conclusion.trim() || !newRuleData.condition.trim()) {
-      alert('Todos os campos são obrigatórios.');
-      return;
-    }
-    try {
-      // newRuleData should ideally be structured accordingly, adjust as needed.
-      await axios.post('http://localhost:3000/api/rules', newRuleData);
-      setShowNewRuleModal(false);
-      fetchRules();
-    } catch (error) {
-      console.error('Erro ao criar regra:', error);
-    }
+  // Callback to be executed after a new rule is created.
+  const onRuleCreated = () => {
+    setShowNewRuleModal(false);
+    fetchRules();
   };
 
   if (loading) return <div>Carregando regras...</div>;
@@ -154,14 +140,26 @@ const RuleList = () => {
               padding: '2rem',
               borderRadius: '8px',
               minWidth: '300px',
+              maxHeight: '70vh',
+              overflowY: 'auto',
             }}
             onClick={e => e.stopPropagation()}
           >
             <h2>Regra: {selectedRule.id}</h2>
             <p>
-              <strong>Condição:</strong>{' '}
-              {JSON.stringify(selectedRule.condition)}
+              <strong>Condições:</strong>
             </p>
+            <pre
+              style={{
+                background: '#f4f4f4',
+                padding: '1rem',
+                borderRadius: '4px',
+              }}
+            >
+              {selectedRule.condition
+                ? JSON.stringify(selectedRule.condition, null, 2)
+                : JSON.stringify(selectedRule.conditions, null, 2)}
+            </pre>
             <p>
               <strong>Conclusão:</strong> {selectedRule.conclusion}
             </p>
@@ -222,7 +220,7 @@ const RuleList = () => {
         </div>
       )}
 
-      {/* New Rule Modal */}
+      {/* New Rule Modal integrating AddRule Component */}
       {showNewRuleModal && (
         <div
           className="modal"
@@ -246,47 +244,15 @@ const RuleList = () => {
               padding: '2rem',
               borderRadius: '8px',
               minWidth: '300px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h2>Nova Regra</h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <input
-                type="text"
-                placeholder="Conclusão"
-                value={newRuleData.conclusion}
-                onChange={e =>
-                  setNewRuleData({ ...newRuleData, conclusion: e.target.value })
-                }
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  marginBottom: '1rem',
-                }}
-              />
-              <textarea
-                placeholder="Condição (JSON ou string)"
-                value={newRuleData.condition}
-                onChange={e =>
-                  setNewRuleData({ ...newRuleData, condition: e.target.value })
-                }
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  minHeight: '80px',
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={handleCreateRule}
-                style={{ marginRight: '1rem' }}
-              >
-                Criar
-              </button>
-              <button onClick={() => setShowNewRuleModal(false)}>
-                Cancelar
-              </button>
+            <h2>Adicionar Nova Regra</h2>
+            <AddRule onRuleCreated={onRuleCreated} />
+            <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+              <button onClick={() => setShowNewRuleModal(false)}>Fechar</button>
             </div>
           </div>
         </div>

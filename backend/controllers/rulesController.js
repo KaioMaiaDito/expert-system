@@ -1,4 +1,4 @@
-const { generateId, loadData, saveData } = require('../utils/utils');
+const { generateId, loadData, saveData } = require('./utils');
 
 // List all rules
 const listRules = (req, res) => {
@@ -17,20 +17,56 @@ const getRuleById = (req, res) => {
   res.json(rule);
 };
 
-// Create a new rule with generated ID
+/*
+  Improved createRule function.
+  Instead of the simple string field "condition" and a list of facts,
+  we now support associating facts to a rule with specified conditions.
+  The expected payload should include:
+    - conclusion: a string with the conclusion.
+    - conditions: an array of condition objects.
+      Each condition object must have:
+        - factId: the ID of the associated fact.
+        - operator: a string representing the condition (e.g., OR, AND, EQUAL, NOT_EQUAL).
+        - value (optional): a value to compare, if applicable.
+*/
 const createRule = (req, res) => {
-  const { conclusion, condition, facts: ruleFacts } = req.body;
-  if (!conclusion || !condition) {
+  const { conclusion, conditions } = req.body;
+
+  if (!conclusion) {
+    return res.status(400).json({ error: 'Conclusão é obrigatória.' });
+  }
+
+  if (!Array.isArray(conditions) || conditions.length === 0) {
     return res
       .status(400)
-      .json({ error: 'Conclusão e condição são obrigatórios.' });
+      .json({ error: 'Pelo menos uma condição é necessária.' });
   }
+
+  // Define supported operators.
+  const validOperators = ['OR', 'AND', 'EQUAL', 'NOT_EQUAL'];
+
+  // Validate each condition.
+  for (const cond of conditions) {
+    if (!cond.factId || !cond.operator) {
+      return res
+        .status(400)
+        .json({ error: 'Cada condição deve ter um factId e um operator.' });
+    }
+    if (!validOperators.includes(cond.operator.toUpperCase())) {
+      return res.status(400).json({
+        error: `Operador inválido: ${
+          cond.operator
+        }. Operadores válidos: ${validOperators.join(', ')}.`,
+      });
+    }
+  }
+
   const newRule = {
     id: generateId(),
     conclusion,
-    condition,
-    facts: Array.isArray(ruleFacts) ? ruleFacts : [],
+    conditions,
   };
+
   const data = loadData();
   data.rules.push(newRule);
   saveData(data);

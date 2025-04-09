@@ -134,6 +134,134 @@
         ]
       },
       "conclusion": "laterna verde"
+    },
+    {
+      "id": "1744229071248",
+      "conclusion": "super homem",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "usa capa",
+              "value": "sim"
+            }
+          },
+          {
+            "equals": {
+              "fact": "corre",
+              "value": "sim"
+            }
+          },
+          {
+            "equals": {
+              "fact": "voa",
+              "value": "sim"
+            }
+          }
+        ]
+      },
+      "facts": []
+    },
+    {
+      "id": "1744229132057",
+      "conclusion": "batman",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "usa capa",
+              "value": "sim"
+            }
+          },
+          {
+            "equals": {
+              "fact": "voa",
+              "value": "nao"
+            }
+          },
+          {
+            "equals": {
+              "fact": "usa máscara",
+              "value": "sim"
+            }
+          }
+        ]
+      },
+      "facts": []
+    },
+    {
+      "id": "1744229191985",
+      "conclusion": "tornado",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "corre",
+              "value": "sim"
+            }
+          },
+          {
+            "equals": {
+              "fact": "uniforme",
+              "value": "vermelho"
+            }
+          }
+        ]
+      },
+      "facts": []
+    },
+    {
+      "id": "1744229908632",
+      "conclusion": "Homem de Aco",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "usa capa",
+              "value": "sim"
+            }
+          },
+          {
+            "or": [
+              {
+                "equals": {
+                  "fact": "corre",
+                  "value": "sim"
+                }
+              },
+              {
+                "equals": {
+                  "fact": "voa",
+                  "value": "sim"
+                }
+              }
+            ]
+          },
+          {
+            "or": [
+              {
+                "equals": {
+                  "fact": "uniforme",
+                  "value": "azul"
+                }
+              },
+              {
+                "equals": {
+                  "fact": "uniforme",
+                  "value": "vermelho"
+                }
+              }
+            ]
+          },
+          {
+            "equals": {
+              "fact": "usa capa",
+              "value": "sim"
+            }
+          }
+        ]
+      },
+      "facts": []
     }
   ],
   "facts": [
@@ -199,16 +327,6 @@
       "possibleValues": [
         "sim",
         "não"
-      ]
-    },
-    {
-      "id": "1744221092931",
-      "name": "teste",
-      "type": "string",
-      "possibleValues": [
-        "1",
-        "2",
-        "3"
       ]
     }
   ],
