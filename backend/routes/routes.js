@@ -5,6 +5,7 @@ const projectController = require('../controllers/projectsController');
 const ruleController = require('../controllers/rulesController');
 const factController = require('../controllers/factsController');
 const responsibleController = require('../controllers/responsibleController');
+const dfaRoutes = require('./dfaRoutes'); // Importa as rotas do DFA
 
 // Project routes
 router.get('/projects', projectController.getProjects);
@@ -29,5 +30,8 @@ router.get('/responsibles', responsibleController.getResponsibles);
 router.get('/responsibles/:id', responsibleController.getResponsibleById);
 router.post('/responsibles', responsibleController.createResponsible);
 router.delete('/responsibles/:id', responsibleController.deleteResponsible);
+
+// DFA routes
+router.use('/dfa', dfaRoutes);
 
 module.exports = router;
