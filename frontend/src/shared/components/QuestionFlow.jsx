@@ -3,6 +3,7 @@ import axios from 'axios';
 
 const QuestionFlow = () => {
   const [question, setQuestion] = useState('');
+  const [possibleValues, setPossibleValues] = useState([]);
   const [factValues, setFactValues] = useState({});
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -13,14 +14,18 @@ const QuestionFlow = () => {
     axios
       .post('http://localhost:3000/api/dfa/start')
       .then(response => {
-        // Espera que o backend retorne { nextQuestion, finished, message }
-        // message pode ser a conclusão caso o fluxo esteja finalizado
         if (response.data.finished) {
           setFinished(true);
           setFactValues(response.data.factValues);
           setConclusion(response.data.message);
         } else {
           setQuestion(response.data.nextQuestion);
+          // Se o backend enviar os possibleValues, usa-os; caso contrário, usa valores padrão
+          if (response.data.possibleValues) {
+            setPossibleValues(response.data.possibleValues);
+          } else {
+            setPossibleValues(['sim', 'nao']);
+          }
         }
         setLoading(false);
       })
@@ -41,6 +46,11 @@ const QuestionFlow = () => {
           setConclusion(response.data.message);
         } else {
           setQuestion(response.data.nextQuestion);
+          if (response.data.possibleValues) {
+            setPossibleValues(response.data.possibleValues);
+          } else {
+            setPossibleValues(['sim', 'nao']);
+          }
         }
       })
       .catch(error => {
@@ -48,8 +58,8 @@ const QuestionFlow = () => {
       });
   };
 
-  // Função auxiliar para extrair o nome do fato a partir da pergunta
-  // Exemplo: a pergunta "Qual o valor para "corre"?" retornará "corre"
+  // Função auxiliar para extrair o nome do fato a partir da pergunta.
+  // Exemplo: "Qual o valor para "corre"?" retornará "corre"
   const getFactFromQuestion = questionText => {
     const regex = /"([^"]+)"/;
     const match = regex.exec(questionText);
@@ -72,19 +82,18 @@ const QuestionFlow = () => {
       ) : (
         <div>
           <h2>{question}</h2>
-          {/** Extraímos o fato pendente da pergunta.
-           * Caso não seja possível extrair, o usuário deve identificar qual fato está sendo perguntado.
-           */}
-          <button
-            onClick={() => handleAnswer(getFactFromQuestion(question), 'sim')}
-          >
-            Sim
-          </button>
-          <button
-            onClick={() => handleAnswer(getFactFromQuestion(question), 'nao')}
-          >
-            Não
-          </button>
+          <div>
+            {possibleValues.map(value => (
+              <button
+                key={value}
+                onClick={() =>
+                  handleAnswer(getFactFromQuestion(question), value)
+                }
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

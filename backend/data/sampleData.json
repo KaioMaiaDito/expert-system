@@ -3,8 +3,8 @@
     {
       "id": "project-1",
       "name": "Projeto Super-Heróis",
-      "facts": ["fact-1", "fact-2", "fact-3", "fact-4"],
-      "rules": ["rule-1", "rule-2"],
+      "facts": ["fact-1", "fact-2", "fact-3", "fact-4", "fact-5", "fact-6"],
+      "rules": ["rule-1", "rule-2", "rule-3", "rule-4"],
       "responsibleId": "responsible-1"
     }
   ],
@@ -64,6 +64,64 @@
         ]
       },
       "conclusion": "flash"
+    },
+    {
+      "id": "rule-3",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "usa capa",
+              "value": "sim"
+            }
+          },
+          {
+            "equals": {
+              "fact": "corre",
+              "value": "nao"
+            }
+          },
+          {
+            "equals": {
+              "fact": "voa",
+              "value": "nao"
+            }
+          },
+          {
+            "equals": {
+              "fact": "usa máscara",
+              "value": "sim"
+            }
+          }
+        ]
+      },
+      "conclusion": "batman"
+    },
+    {
+      "id": "rule-4",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "usa anel",
+              "value": "sim"
+            }
+          },
+          {
+            "equals": {
+              "fact": "uniforme",
+              "value": "verde"
+            }
+          },
+          {
+            "equals": {
+              "fact": "voa",
+              "value": "sim"
+            }
+          }
+        ]
+      },
+      "conclusion": "laterna verde"
     }
   ],
   "facts": [
@@ -90,12 +148,24 @@
       "name": "voa",
       "type": "boolean",
       "possibleValues": ["sim", "nao"]
+    },
+    {
+      "id": "fact-5",
+      "name": "usa máscara",
+      "type": "boolean",
+      "possibleValues": ["sim", "nao"]
+    },
+    {
+      "id": "fact-6",
+      "name": "usa anel",
+      "type": "boolean",
+      "possibleValues": ["sim", "nao"]
     }
   ],
   "responsibles": [
     {
       "id": "responsible-1",
-      "name": "Fulano de Tal"
+      "name": "Kaio"
     }
   ]
 }

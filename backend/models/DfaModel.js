@@ -1,4 +1,6 @@
-// Um modelo simples para armazenar o estado da sessão do DFA
+const fs = require('fs');
+const path = require('path');
+
 class DFASession {
   constructor() {
     this.reset();
@@ -6,6 +8,8 @@ class DFASession {
 
   reset() {
     this.factValues = {};
+    // Armazena o fluxo linear do DFA.
+    this.dfa = null;
   }
 }
 

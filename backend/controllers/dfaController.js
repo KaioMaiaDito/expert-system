@@ -1,113 +1,102 @@
 const fs = require('fs');
 const path = require('path');
-const { translateConditionToDFA } = require('../utils/dfaTranslator');
+const dfaSession = require('../models/DfaModel');
 
 // Caminho para o arquivo sampleData.json
 const sampleDataPath = path.join(__dirname, '../data/sampleData.json');
 
-// Objeto para armazenar a sessão do DFA
-const dfaSession = {
-  factValues: {},
-  dfa: null,
-};
-
-// Função auxiliar para ler e parsear o sampleData.json
+/**
+ * Função auxiliar para ler e parsear o sampleData.json.
+ */
 function loadSampleData() {
   const data = fs.readFileSync(sampleDataPath, 'utf8');
   return JSON.parse(data);
 }
 
 /**
- * Função auxiliar para computar o estado atual do DFA com base
- * nos valores coletados dos fatos até o momento.
- *
- * @param {Object} dfa - O autômato finito determinístico.
- * @param {Object} factValues - Respostas parciais, por exemplo, { corre: "sim" }.
- * @returns {Object} - { currentState, pendingFact, finished }
+ * Função auxiliar para extrair os fatos de uma condição recursivamente.
+ * Lida com as chaves equals, all e or.
  */
-function computeCurrentState(dfa, factValues) {
-  let currentState = dfa.startState;
-  let pendingFact = null;
+function extractFactsFromCondition(condition) {
+  let facts = [];
+  if (condition.equals) {
+    facts.push(condition.equals.fact);
+  } else if (condition.all) {
+    condition.all.forEach(subCondition => {
+      facts = facts.concat(extractFactsFromCondition(subCondition));
+    });
+  } else if (condition.or) {
+    condition.or.forEach(subCondition => {
+      facts = facts.concat(extractFactsFromCondition(subCondition));
+    });
+  }
+  return facts;
+}
 
-  while (true) {
-    if (currentState.isFinal) {
-      return { currentState, pendingFact: null, finished: true };
-    }
-
-    let transitionTaken = false;
-    for (const symbol in currentState.transitions) {
-      // Transição epsilon: avança sem consumir fato
-      if (symbol.startsWith('ε')) {
-        currentState = currentState.transitions[symbol];
-        transitionTaken = true;
-        break;
-      }
-      // Transição no formato "fact=value"
-      const [fact, expected] = symbol.split('=');
-      if (fact in factValues) {
-        if (factValues[fact] === expected) {
-          currentState = currentState.transitions[symbol];
-          transitionTaken = true;
-          break;
-        } else {
-          // Se foi respondido e não bate, não há transição possível
-          return { currentState, pendingFact: null, finished: false };
-        }
-      } else {
-        pendingFact = fact;
-        return { currentState, pendingFact, finished: false };
-      }
-    }
-    if (!transitionTaken) {
-      return { currentState, pendingFact, finished: false };
+/**
+ * Função auxiliar para obter os possibleValues de um fato a partir do sampleData.
+ * Se não encontrar, retorna o array padrão ["sim", "nao"].
+ */
+function getPossibleValuesForFact(factName) {
+  const sampleData = loadSampleData();
+  if (sampleData.facts && Array.isArray(sampleData.facts)) {
+    const factDef = sampleData.facts.find(fact => fact.name === factName);
+    if (factDef && factDef.possibleValues) {
+      return factDef.possibleValues;
     }
   }
+  return ['sim', 'nao'];
 }
 
 /**
  * Controller para iniciar a sessão do DFA.
  * - Carrega o sampleData.json.
- * - Seleciona uma regra (neste exemplo, a "rule-1").
- * - Constrói o DFA a partir da condição da regra.
- * - Reinicia a sessão armazenando o dfa e factValues.
- * - Retorna a primeira pergunta.
+ * - Seleciona todas as regras disponíveis e extrai os fatos (sem duplicatas).
+ * - Cria um fluxo linear simples com os fatos extraídos.
+ * - Reinicia a sessão armazenando o fluxo do DFA e os valores iniciais.
+ * - Retorna a primeira pergunta junto com os possibleValues.
  */
 const startSession = (req, res) => {
   try {
     const sampleData = loadSampleData();
-    // Seleciona a regra desejada; aqui usamos a "rule-1" como exemplo.
-    const rule = sampleData.rules.find(r => r.id === 'rule-1');
-    if (!rule) {
+    const rules = sampleData.rules;
+    if (!rules || rules.length === 0) {
       return res
         .status(404)
-        .json({ error: "Regra 'rule-1' não encontrada no sampleData." });
+        .json({ error: 'Nenhuma regra encontrada no sampleData.' });
     }
-    // Converte a condição da regra para um DFA
-    const dfa = translateConditionToDFA(rule.condition, 's');
+    // Extrai os fatos de todas as regras
+    const factSet = new Set();
+    rules.forEach(rule => {
+      const facts = extractFactsFromCondition(rule.condition);
+      facts.forEach(fact => factSet.add(fact));
+    });
+    // Cria um array com a ordem de inserção dos fatos
+    const allFacts = Array.from(factSet);
+    if (allFacts.length === 0) {
+      return res
+        .status(400)
+        .json({ error: 'Nenhum fato extraído das regras.' });
+    }
+
+    // Cria um fluxo linear simples para o DFA
+    const dfa = {
+      total: allFacts.length,
+      facts: allFacts, // lista de fatos na ordem em que serão perguntados
+    };
+
     // Reinicia a sessão do DFA
-    dfaSession.factValues = {};
+    dfaSession.reset();
     dfaSession.dfa = dfa;
 
-    const { pendingFact, finished } = computeCurrentState(
-      dfaSession.dfa,
-      dfaSession.factValues
-    );
-    if (finished) {
-      return res.json({
-        message: 'Regra satisfeita!',
-        finished: true,
-        factValues: dfaSession.factValues,
-      });
-    } else if (pendingFact) {
-      return res.json({
-        message: 'Fluxo iniciado',
-        nextQuestion: `Qual o valor para "${pendingFact}"?`,
-        finished: false,
-      });
-    }
-    return res
-      .status(400)
-      .json({ error: 'Não foi possível iniciar o fluxo DFA.' });
+    // Primeiro fato a ser perguntado
+    const firstFact = dfa.facts[0];
+    return res.json({
+      message: 'Fluxo iniciado',
+      nextQuestion: `Qual o valor para "${firstFact}"?`,
+      possibleValues: getPossibleValuesForFact(firstFact),
+      finished: false,
+    });
   } catch (err) {
     return res.status(500).json({
       error: 'Erro ao iniciar a sessão do DFA.',
@@ -117,8 +106,30 @@ const startSession = (req, res) => {
 };
 
 /**
- * Controller para processar a resposta do usuário e retornar
- * a próxima pergunta ou o resultado final.
+ * Função auxiliar para avaliar uma condição recursivamente com base nos valores informados.
+ * Suporta: equals, all e or.
+ */
+function evaluateCondition(condition, factValues) {
+  if (condition.equals) {
+    const { fact, value } = condition.equals;
+    return factValues[fact] === value;
+  } else if (condition.all) {
+    return condition.all.every(subCondition =>
+      evaluateCondition(subCondition, factValues)
+    );
+  } else if (condition.or) {
+    return condition.or.some(subCondition =>
+      evaluateCondition(subCondition, factValues)
+    );
+  }
+  return false;
+}
+
+/**
+ * Controller para processar a resposta do usuário e retornar a próxima pergunta ou o resultado final.
+ * - Atualiza os valores dos fatos na sessão.
+ * - Se ainda houver fatos pendentes, retorna o próximo fato juntamente com os possibleValues.
+ * - Se todas as perguntas foram respondidas, avalia as regras e retorna a conclusão da primeira regra satisfeita.
  */
 const submitAnswer = (req, res) => {
   try {
@@ -134,31 +145,52 @@ const submitAnswer = (req, res) => {
       });
     }
 
-    // Atualiza a sessão com a resposta do usuário
+    // Atualiza o valor do fato respondido
     dfaSession.factValues[fact] = value;
-    const { pendingFact, finished } = computeCurrentState(
-      dfaSession.dfa,
-      dfaSession.factValues
-    );
 
-    if (finished) {
-      // Aqui também poderíamos buscar a conclusão da regra no sampleData, se necessário.
-      const sampleData = loadSampleData();
-      const rule = sampleData.rules.find(r => r.id === 'rule-1');
-      return res.json({
-        finished: true,
-        factValues: dfaSession.factValues,
-        message: rule.conclusion,
-      });
-    } else if (pendingFact) {
+    // Determina o próximo fato pendente a partir do fluxo linear.
+    const index = dfaSession.dfa.facts.indexOf(fact);
+    let nextIndex = index + 1;
+    while (
+      nextIndex < dfaSession.dfa.total &&
+      dfaSession.factValues.hasOwnProperty(dfaSession.dfa.facts[nextIndex])
+    ) {
+      nextIndex++;
+    }
+
+    if (nextIndex < dfaSession.dfa.total) {
+      const nextFact = dfaSession.dfa.facts[nextIndex];
       return res.json({
         finished: false,
-        nextQuestion: `Qual o valor para "${pendingFact}"?`,
+        nextQuestion: `Qual o valor para "${nextFact}"?`,
+        possibleValues: getPossibleValuesForFact(nextFact),
       });
+    } else {
+      // Todas as perguntas foram respondidas. Avalia as regras.
+      const sampleData = loadSampleData();
+      const rules = sampleData.rules;
+      let matchedRule = null;
+
+      for (let rule of rules) {
+        if (evaluateCondition(rule.condition, dfaSession.factValues)) {
+          matchedRule = rule;
+          break;
+        }
+      }
+      if (matchedRule) {
+        return res.json({
+          finished: true,
+          factValues: dfaSession.factValues,
+          message: matchedRule.conclusion,
+        });
+      } else {
+        return res.json({
+          finished: true,
+          factValues: dfaSession.factValues,
+          message: 'Nenhuma regra foi satisfeita com os valores informados.',
+        });
+      }
     }
-    return res
-      .status(400)
-      .json({ error: 'Fluxo inválido ou sem transição possível.' });
   } catch (err) {
     return res
       .status(500)
