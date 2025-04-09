@@ -3,14 +3,8 @@
     {
       "id": "project-1",
       "name": "Projeto Super-Heróis",
-      "facts": [
-        "fact-1",
-        "fact-2"
-      ],
-      "rules": [
-        "rule-1",
-        "rule-2"
-      ],
+      "facts": ["fact-1", "fact-2", "fact-3", "fact-4"],
+      "rules": ["rule-1", "rule-2"],
       "responsibleId": "responsible-1"
     }
   ],
@@ -23,19 +17,22 @@
             "or": [
               {
                 "equals": {
-                  "corre": "sim"
+                  "fact": "corre",
+                  "value": "sim"
                 }
               },
               {
                 "equals": {
-                  "voa": "sim"
+                  "fact": "voa",
+                  "value": "sim"
                 }
               }
             ]
           },
           {
             "equals": {
-              "usa capa": "sim"
+              "fact": "usa capa",
+              "value": "sim"
             }
           }
         ]
@@ -48,17 +45,20 @@
         "all": [
           {
             "equals": {
-              "corre": "sim"
+              "fact": "corre",
+              "value": "sim"
             }
           },
           {
             "equals": {
-              "usa capa": "nao"
+              "fact": "usa capa",
+              "value": "nao"
             }
           },
           {
             "equals": {
-              "uniforme": "vermelho"
+              "fact": "uniforme",
+              "value": "vermelho"
             }
           }
         ]
@@ -66,6 +66,36 @@
       "conclusion": "flash"
     }
   ],
-  "facts": [],
-  "responsibles": []
+  "facts": [
+    {
+      "id": "fact-1",
+      "name": "usa capa",
+      "type": "boolean",
+      "possibleValues": ["sim", "nao"]
+    },
+    {
+      "id": "fact-2",
+      "name": "corre",
+      "type": "boolean",
+      "possibleValues": ["sim", "nao"]
+    },
+    {
+      "id": "fact-3",
+      "name": "uniforme",
+      "type": "string",
+      "possibleValues": ["vermelho", "azul", "verde"]
+    },
+    {
+      "id": "fact-4",
+      "name": "voa",
+      "type": "boolean",
+      "possibleValues": ["sim", "nao"]
+    }
+  ],
+  "responsibles": [
+    {
+      "id": "responsible-1",
+      "name": "Fulano de Tal"
+    }
+  ]
 }

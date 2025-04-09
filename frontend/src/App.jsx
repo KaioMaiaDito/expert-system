@@ -62,8 +62,8 @@ const App = () => {
           createProject({
             id: 'project-novo',
             name: 'Projeto Novo',
-            facts: [],
-            rules: [],
+            facts: ['fact-1', 'fact-2', 'fact-3', 'fact-4'],
+            rules: ['rule-1', 'rule-2'],
             responsibleId: 'responsible-1',
           })
         }
@@ -84,7 +84,23 @@ const App = () => {
         onClick={() =>
           createRule({
             id: 'nova-regra',
-            condition: { all: [{ equals: { corre: 'sim' } }] },
+            condition: {
+              all: [
+                {
+                  or: [
+                    {
+                      equals: { fact: 'corre', value: 'sim' },
+                    },
+                    {
+                      equals: { fact: 'voa', value: 'sim' },
+                    },
+                  ],
+                },
+                {
+                  equals: { fact: 'usa capa', value: 'sim' },
+                },
+              ],
+            },
             conclusion: 'Novo Superpoder',
           })
         }
@@ -96,14 +112,19 @@ const App = () => {
       <ul>
         {facts.map(fact => (
           <li key={fact.id}>
-            {fact.description}
+            {fact.name}
             <button onClick={() => deleteFact(fact.id)}>Excluir</button>
           </li>
         ))}
       </ul>
       <button
         onClick={() =>
-          createFact({ id: 'novo-fato', description: 'Novo Fato Teste' })
+          createFact({
+            id: 'novo-fato',
+            name: 'Novo Fato Teste',
+            type: 'string',
+            possibleValues: ['teste1', 'teste2'],
+          })
         }
       >
         Criar Fato
@@ -125,7 +146,6 @@ const App = () => {
           createResponsible({
             id: 'novo-responsavel',
             name: 'Novo Responsável',
-            email: 'novo@exemplo.com',
           })
         }
       >

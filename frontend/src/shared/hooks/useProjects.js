@@ -1,42 +1,42 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3000';
-
 export function useProjects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Carrega todos os projetos assim que o hook é utilizado
+  const fetchProjects = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/projects');
+      setProjects(response.data);
+      setLoading(false);
+    } catch (err) {
+      setError(err);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    axios
-      .get(`${BASE_URL}/projects`)
-      .then(response => {
-        setProjects(response.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err);
-        setLoading(false);
-      });
+    fetchProjects();
   }, []);
 
-  // Função para criar um novo projeto
-  const createProject = async newProject => {
+  const createProject = async project => {
     try {
-      const response = await axios.post(`${BASE_URL}/projects`, newProject);
+      const response = await axios.post(
+        'http://localhost:3000/api/projects',
+        project
+      );
       setProjects([...projects, response.data]);
     } catch (err) {
       setError(err);
     }
   };
 
-  // Função para deletar um projeto
-  const deleteProject = async projectId => {
+  const deleteProject = async id => {
     try {
-      await axios.delete(`${BASE_URL}/projects/${projectId}`);
-      setProjects(projects.filter(project => project.id !== projectId));
+      await axios.delete(`http://localhost:3000/api/projects/${id}`);
+      setProjects(projects.filter(project => project.id !== id));
     } catch (err) {
       setError(err);
     }

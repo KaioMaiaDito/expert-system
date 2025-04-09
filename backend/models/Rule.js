@@ -1,19 +1,34 @@
-// models/Rule.js
-const FileStorageService = require('../services/fileStorageService');
-
 class Rule {
-  constructor({ id, condition, conclusion }) {
+  constructor(id, condition, conclusion) {
     this.id = id;
-    // A condição agora pode ser um objeto complexo. Ela pode ter operadores lógicos "all" e "or"
     this.condition = condition;
     this.conclusion = conclusion;
   }
 
-  static loadAll() {
-    // Ajuste o caminho para o arquivo JSON onde os dados estão armazenados
-    const data = FileStorageService.readData('./data/sampleData.json');
-    if (!data || !data.rules) return [];
-    return data.rules.map(ruleData => new Rule(ruleData));
+  // Exemplo de método de avaliação da regra com base em um conjunto de valores para os fatos.
+  // O parâmetro factValues é um objeto no formato: { 'corre': 'sim', 'usa capa': 'sim', ... }
+  evaluate(factValues) {
+    return this.evaluateCondition(this.condition, factValues);
+  }
+
+  // Função recursiva para avaliar a condição (suporta operadores "all", "or" e "equals")
+  evaluateCondition(condition, factValues) {
+    if (condition.all) {
+      return condition.all.every(cond =>
+        this.evaluateCondition(cond, factValues)
+      );
+    }
+    if (condition.or) {
+      return condition.or.some(cond =>
+        this.evaluateCondition(cond, factValues)
+      );
+    }
+    if (condition.equals) {
+      // condition.equals deve ter a forma: { fact: "nome do fato", value: "valor esperado" }
+      const { fact, value } = condition.equals;
+      return factValues[fact] === value;
+    }
+    return false;
   }
 }
 

@@ -1,52 +1,29 @@
-const Project = require('../models/Project');
-const FileStorageService = require('../services/fileStorageService');
+const { projects } = require('../data/sampleData.json');
 
-class ProjectController {
-  // Retorna todos os projetos do arquivo JSON
-  static getAll(req, res) {
-    try {
-      const projects = Project.loadAll();
-      res.status(200).json(projects);
-    } catch (error) {
-      res.status(500).json({
-        message: 'Erro ao carregar os projetos',
-        error: error.message,
-      });
-    }
+exports.getProjects = (req, res) => {
+  res.json(projects);
+};
+
+exports.getProjectById = (req, res) => {
+  const project = projects.find(p => p.id === req.params.id);
+  if (!project) {
+    return res.status(404).json({ message: 'Project not found' });
   }
+  res.json(project);
+};
 
-  // Cria um novo projeto e persiste no arquivo JSON
-  static create(req, res) {
-    try {
-      const newProject = req.body;
-      const data = FileStorageService.readData('./data/sampleData.json') || {};
-      data.projects = data.projects || [];
-      data.projects.push(newProject);
-      FileStorageService.writeData('./data/sampleData.json', data);
-      res.status(201).json(newProject);
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: 'Erro ao criar o projeto', error: error.message });
-    }
+exports.createProject = (req, res) => {
+  const { id, name, facts, rules, responsibleId } = req.body;
+  const newProject = { id, name, facts, rules, responsibleId };
+  projects.push(newProject);
+  res.status(201).json(newProject);
+};
+
+exports.deleteProject = (req, res) => {
+  const index = projects.findIndex(p => p.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ message: 'Project not found' });
   }
-
-  // Exclui um projeto baseado em seu id
-  static delete(req, res) {
-    try {
-      const { id } = req.params;
-      const data = FileStorageService.readData('./data/sampleData.json') || {};
-      data.projects = (data.projects || []).filter(
-        project => project.id !== id
-      );
-      FileStorageService.writeData('./data/sampleData.json', data);
-      res.status(200).json({ message: `Projeto ${id} removido com sucesso.` });
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: 'Erro ao remover o projeto', error: error.message });
-    }
-  }
-}
-
-module.exports = ProjectController;
+  projects.splice(index, 1);
+  res.status(200).json({ message: 'Project deleted successfully' });
+};

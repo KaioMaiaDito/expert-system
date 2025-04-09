@@ -1,17 +1,14 @@
-// models/Fact.js
-const FileStorageService = require('../services/fileStorageService');
-
 class Fact {
-  constructor({ id, description }) {
+  constructor(id, name, type, possibleValues) {
     this.id = id;
-    this.description = description;
+    this.name = name;
+    this.type = type;
+    this.possibleValues = possibleValues;
   }
 
-  static loadAll() {
-    // Ajuste o caminho para o arquivo JSON onde os dados estão armazenados
-    const data = FileStorageService.readData('./data/sampleData.json');
-    if (!data || !data.facts) return [];
-    return data.facts.map(factData => new Fact(factData));
+  // Você pode adicionar métodos para validar um input, por exemplo:
+  isValid(value) {
+    return this.possibleValues.includes(value);
   }
 }
 
