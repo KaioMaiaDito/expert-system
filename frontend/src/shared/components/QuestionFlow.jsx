@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const QuestionFlow = () => {
+const QuestionFlow = projectId => {
   const [question, setQuestion] = useState('');
   const [possibleValues, setPossibleValues] = useState([]);
   const [factValues, setFactValues] = useState({});
@@ -12,7 +12,7 @@ const QuestionFlow = () => {
   // Inicia a sessão do DFA chamando a rota /dfa/start
   useEffect(() => {
     axios
-      .post('http://localhost:3000/api/dfa/start')
+      .post('http://localhost:3000/api/dfa/start', { projectId })
       .then(response => {
         if (response.data.finished) {
           setFinished(true);
@@ -33,7 +33,7 @@ const QuestionFlow = () => {
         console.error('Erro ao iniciar a sessão do DFA:', error);
         setLoading(false);
       });
-  }, []);
+  }, [projectId]);
 
   // Função para enviar uma resposta do usuário e obter a próxima pergunta
   const handleAnswer = (fact, value) => {

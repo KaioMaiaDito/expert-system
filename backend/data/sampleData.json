@@ -18,6 +18,13 @@
         "rule-4"
       ],
       "responsibleId": "responsible-1"
+    },
+    {
+      "id": "1744239062424",
+      "name": "Teste",
+      "description": "",
+      "facts": [],
+      "rules": []
     }
   ],
   "rules": [
@@ -258,6 +265,31 @@
               "fact": "usa capa",
               "value": "sim"
             }
+          }
+        ]
+      },
+      "facts": []
+    },
+    {
+      "id": "1744237931661",
+      "conclusion": "teste",
+      "condition": {
+        "all": [
+          {
+            "or": [
+              {
+                "equals": {
+                  "fact": "usa capa",
+                  "value": "sim"
+                }
+              },
+              {
+                "equals": {
+                  "fact": "uniforme",
+                  "value": "vermelho"
+                }
+              }
+            ]
           }
         ]
       },
