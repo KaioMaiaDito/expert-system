@@ -1,29 +1,72 @@
-const { rules } = require('../data/sampleData.json');
+const { generateId, loadData, saveData } = require('../utils/utils');
 
-exports.getRules = (req, res) => {
-  res.json(rules);
+// List all rules
+const listRules = (req, res) => {
+  const data = loadData();
+  res.json(data.rules);
 };
 
-exports.getRuleById = (req, res) => {
-  const rule = rules.find(r => r.id === req.params.id);
+// Get a rule by ID
+const getRuleById = (req, res) => {
+  const ruleId = req.params.id;
+  const data = loadData();
+  const rule = data.rules.find(rule => rule.id === ruleId);
   if (!rule) {
-    return res.status(404).json({ message: 'Rule not found' });
+    return res.status(404).json({ error: 'Regra não encontrada.' });
   }
   res.json(rule);
 };
 
-exports.createRule = (req, res) => {
-  const { id, condition, conclusion } = req.body;
-  const newRule = { id, condition, conclusion };
-  rules.push(newRule);
+// Create a new rule with generated ID
+const createRule = (req, res) => {
+  const { conclusion, condition, facts: ruleFacts } = req.body;
+  if (!conclusion || !condition) {
+    return res
+      .status(400)
+      .json({ error: 'Conclusão e condição são obrigatórios.' });
+  }
+  const newRule = {
+    id: generateId(),
+    conclusion,
+    condition,
+    facts: Array.isArray(ruleFacts) ? ruleFacts : [],
+  };
+  const data = loadData();
+  data.rules.push(newRule);
+  saveData(data);
   res.status(201).json(newRule);
 };
 
-exports.deleteRule = (req, res) => {
-  const index = rules.findIndex(r => r.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ message: 'Rule not found' });
+// Delete a rule if it is not used by any project or referenced by another rule
+const deleteRule = (req, res) => {
+  const ruleId = req.params.id;
+  const data = loadData();
+
+  const usedInProject = data.projects.some(
+    project => project.rules && project.rules.includes(ruleId)
+  );
+  const usedInOtherRule = data.rules.some(
+    rule => rule.dependencies && rule.dependencies.includes(ruleId)
+  );
+
+  if (usedInProject || usedInOtherRule) {
+    return res
+      .status(400)
+      .json({ error: 'Regra em uso e não pode ser excluída.' });
   }
-  rules.splice(index, 1);
-  res.status(200).json({ message: 'Rule deleted successfully' });
+
+  const index = data.rules.findIndex(rule => rule.id === ruleId);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Regra não encontrada.' });
+  }
+  data.rules.splice(index, 1);
+  saveData(data);
+  res.json({ message: 'Regra excluída com sucesso.' });
+};
+
+module.exports = {
+  listRules,
+  getRuleById,
+  createRule,
+  deleteRule,
 };

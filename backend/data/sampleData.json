@@ -3,8 +3,20 @@
     {
       "id": "project-1",
       "name": "Projeto Super-Heróis",
-      "facts": ["fact-1", "fact-2", "fact-3", "fact-4", "fact-5", "fact-6"],
-      "rules": ["rule-1", "rule-2", "rule-3", "rule-4"],
+      "facts": [
+        "fact-1",
+        "fact-2",
+        "fact-3",
+        "fact-4",
+        "fact-5",
+        "fact-6"
+      ],
+      "rules": [
+        "rule-1",
+        "rule-2",
+        "rule-3",
+        "rule-4"
+      ],
       "responsibleId": "responsible-1"
     }
   ],
@@ -129,37 +141,75 @@
       "id": "fact-1",
       "name": "usa capa",
       "type": "boolean",
-      "possibleValues": ["sim", "nao"]
+      "possibleValues": [
+        "sim",
+        "nao"
+      ]
     },
     {
       "id": "fact-2",
       "name": "corre",
       "type": "boolean",
-      "possibleValues": ["sim", "nao"]
+      "possibleValues": [
+        "sim",
+        "nao"
+      ]
     },
     {
       "id": "fact-3",
       "name": "uniforme",
       "type": "string",
-      "possibleValues": ["vermelho", "azul", "verde"]
+      "possibleValues": [
+        "vermelho",
+        "azul",
+        "verde"
+      ]
     },
     {
       "id": "fact-4",
       "name": "voa",
       "type": "boolean",
-      "possibleValues": ["sim", "nao"]
+      "possibleValues": [
+        "sim",
+        "nao"
+      ]
     },
     {
       "id": "fact-5",
       "name": "usa máscara",
       "type": "boolean",
-      "possibleValues": ["sim", "nao"]
+      "possibleValues": [
+        "sim",
+        "nao"
+      ]
     },
     {
       "id": "fact-6",
       "name": "usa anel",
       "type": "boolean",
-      "possibleValues": ["sim", "nao"]
+      "possibleValues": [
+        "sim",
+        "nao"
+      ]
+    },
+    {
+      "id": "1744220940986",
+      "name": "usa laço",
+      "type": "boolean",
+      "possibleValues": [
+        "sim",
+        "não"
+      ]
+    },
+    {
+      "id": "1744221092931",
+      "name": "teste",
+      "type": "string",
+      "possibleValues": [
+        "1",
+        "2",
+        "3"
+      ]
     }
   ],
   "responsibles": [
