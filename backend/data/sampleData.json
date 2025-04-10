@@ -1,48 +1,35 @@
 {
   "projects": [
     {
-      "id": "project-1",
-      "name": "Projeto Super-Heróis",
-      "facts": [
-        "fact-1",
-        "fact-2",
-        "fact-3",
-        "fact-4",
-        "fact-5",
-        "fact-6"
-      ],
-      "rules": [
-        "rule-1",
-        "rule-2",
-        "rule-3",
-        "rule-4"
-      ],
-      "responsibleId": "responsible-1"
-    },
-    {
-      "id": "1744239062424",
-      "name": "Teste",
+      "id": "1744246867146",
+      "name": "Super Heroi",
       "description": "",
       "facts": [],
-      "rules": []
+      "rules": [
+        "1744246766152",
+        "1744246786799",
+        "1744246814096",
+        "1744246846632"
+      ]
     }
   ],
   "rules": [
     {
-      "id": "rule-1",
+      "id": "1744246766152",
+      "conclusion": "Super Homem",
       "condition": {
         "all": [
           {
             "or": [
               {
                 "equals": {
-                  "fact": "corre",
+                  "fact": "voa",
                   "value": "sim"
                 }
               },
               {
                 "equals": {
-                  "fact": "voa",
+                  "fact": "corre",
                   "value": "sim"
                 }
               }
@@ -53,13 +40,41 @@
               "fact": "usa capa",
               "value": "sim"
             }
+          },
+          {
+            "equals": {
+              "fact": "uniforme",
+              "value": "azul"
+            }
           }
         ]
       },
-      "conclusion": "super homem"
+      "facts": []
     },
     {
-      "id": "rule-2",
+      "id": "1744246786799",
+      "conclusion": "Batman",
+      "condition": {
+        "all": [
+          {
+            "equals": {
+              "fact": "uniforme",
+              "value": "preto"
+            }
+          },
+          {
+            "equals": {
+              "fact": "mascara",
+              "value": "sim"
+            }
+          }
+        ]
+      },
+      "facts": []
+    },
+    {
+      "id": "1744246814096",
+      "conclusion": "Flash",
       "condition": {
         "all": [
           {
@@ -70,8 +85,8 @@
           },
           {
             "equals": {
-              "fact": "usa capa",
-              "value": "nao"
+              "fact": "mascara",
+              "value": "sim"
             }
           },
           {
@@ -82,47 +97,22 @@
           }
         ]
       },
-      "conclusion": "flash"
+      "facts": []
     },
     {
-      "id": "rule-3",
+      "id": "1744246846632",
+      "conclusion": "Lanterna Verde",
       "condition": {
         "all": [
-          {
-            "equals": {
-              "fact": "usa capa",
-              "value": "sim"
-            }
-          },
-          {
-            "equals": {
-              "fact": "corre",
-              "value": "nao"
-            }
-          },
           {
             "equals": {
               "fact": "voa",
-              "value": "nao"
+              "value": "sim"
             }
           },
           {
             "equals": {
-              "fact": "usa máscara",
-              "value": "sim"
-            }
-          }
-        ]
-      },
-      "conclusion": "batman"
-    },
-    {
-      "id": "rule-4",
-      "condition": {
-        "all": [
-          {
-            "equals": {
-              "fact": "usa anel",
+              "fact": "mascara",
               "value": "sim"
             }
           },
@@ -134,162 +124,9 @@
           },
           {
             "equals": {
-              "fact": "voa",
+              "fact": "anel",
               "value": "sim"
             }
-          }
-        ]
-      },
-      "conclusion": "laterna verde"
-    },
-    {
-      "id": "1744229071248",
-      "conclusion": "super homem",
-      "condition": {
-        "all": [
-          {
-            "equals": {
-              "fact": "usa capa",
-              "value": "sim"
-            }
-          },
-          {
-            "equals": {
-              "fact": "corre",
-              "value": "sim"
-            }
-          },
-          {
-            "equals": {
-              "fact": "voa",
-              "value": "sim"
-            }
-          }
-        ]
-      },
-      "facts": []
-    },
-    {
-      "id": "1744229132057",
-      "conclusion": "batman",
-      "condition": {
-        "all": [
-          {
-            "equals": {
-              "fact": "usa capa",
-              "value": "sim"
-            }
-          },
-          {
-            "equals": {
-              "fact": "voa",
-              "value": "nao"
-            }
-          },
-          {
-            "equals": {
-              "fact": "usa máscara",
-              "value": "sim"
-            }
-          }
-        ]
-      },
-      "facts": []
-    },
-    {
-      "id": "1744229191985",
-      "conclusion": "tornado",
-      "condition": {
-        "all": [
-          {
-            "equals": {
-              "fact": "corre",
-              "value": "sim"
-            }
-          },
-          {
-            "equals": {
-              "fact": "uniforme",
-              "value": "vermelho"
-            }
-          }
-        ]
-      },
-      "facts": []
-    },
-    {
-      "id": "1744229908632",
-      "conclusion": "Homem de Aco",
-      "condition": {
-        "all": [
-          {
-            "equals": {
-              "fact": "usa capa",
-              "value": "sim"
-            }
-          },
-          {
-            "or": [
-              {
-                "equals": {
-                  "fact": "corre",
-                  "value": "sim"
-                }
-              },
-              {
-                "equals": {
-                  "fact": "voa",
-                  "value": "sim"
-                }
-              }
-            ]
-          },
-          {
-            "or": [
-              {
-                "equals": {
-                  "fact": "uniforme",
-                  "value": "azul"
-                }
-              },
-              {
-                "equals": {
-                  "fact": "uniforme",
-                  "value": "vermelho"
-                }
-              }
-            ]
-          },
-          {
-            "equals": {
-              "fact": "usa capa",
-              "value": "sim"
-            }
-          }
-        ]
-      },
-      "facts": []
-    },
-    {
-      "id": "1744237931661",
-      "conclusion": "teste",
-      "condition": {
-        "all": [
-          {
-            "or": [
-              {
-                "equals": {
-                  "fact": "usa capa",
-                  "value": "sim"
-                }
-              },
-              {
-                "equals": {
-                  "fact": "uniforme",
-                  "value": "vermelho"
-                }
-              }
-            ]
           }
         ]
       },
@@ -298,63 +135,55 @@
   ],
   "facts": [
     {
-      "id": "fact-1",
-      "name": "usa capa",
-      "type": "boolean",
-      "possibleValues": [
-        "sim",
-        "nao"
-      ]
-    },
-    {
-      "id": "fact-2",
-      "name": "corre",
-      "type": "boolean",
-      "possibleValues": [
-        "sim",
-        "nao"
-      ]
-    },
-    {
-      "id": "fact-3",
+      "id": "1744246688788",
       "name": "uniforme",
       "type": "string",
       "possibleValues": [
         "vermelho",
-        "azul",
-        "verde"
+        "preto",
+        "verde",
+        "azul"
       ]
     },
     {
-      "id": "fact-4",
+      "id": "1744246695991",
       "name": "voa",
       "type": "boolean",
       "possibleValues": [
         "sim",
-        "nao"
+        "não"
       ]
     },
     {
-      "id": "fact-5",
-      "name": "usa máscara",
+      "id": "1744246701907",
+      "name": "usa capa",
       "type": "boolean",
       "possibleValues": [
         "sim",
-        "nao"
+        "não"
       ]
     },
     {
-      "id": "fact-6",
-      "name": "usa anel",
+      "id": "1744246708112",
+      "name": "corre",
       "type": "boolean",
       "possibleValues": [
         "sim",
-        "nao"
+        "não"
       ]
     },
     {
-      "id": "1744220940986",
-      "name": "usa laço",
+      "id": "1744246716052",
+      "name": "mascara",
+      "type": "boolean",
+      "possibleValues": [
+        "sim",
+        "não"
+      ]
+    },
+    {
+      "id": "1744246722004",
+      "name": "anel",
       "type": "boolean",
       "possibleValues": [
         "sim",
