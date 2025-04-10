@@ -14,6 +14,15 @@ function loadSampleData() {
 }
 
 /**
+ * Função para normalizar strings (removendo acentos)
+ */
+function normalizeStr(str) {
+  return typeof str === 'string'
+    ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    : str;
+}
+
+/**
  * Função auxiliar para extrair os fatos de uma condição recursivamente.
  * Lida com as chaves equals, all e or.
  */
@@ -141,18 +150,22 @@ const startSession = (req, res) => {
 function evaluateCondition(condition, factValues) {
   if (condition.equals) {
     const { fact, value } = condition.equals;
-    const userAnswer = factValues[fact];
+    const userAnswer = dfaSession.factValues[fact];
     if (Array.isArray(value)) {
-      // Verifica interseção caso o valor esperado seja um array
       if (Array.isArray(userAnswer)) {
-        return userAnswer.some(u => value.includes(u));
+        // Compara normalizando cada valor
+        return userAnswer.some(u =>
+          value.map(v => normalizeStr(v)).includes(normalizeStr(u))
+        );
       }
-      return value.includes(userAnswer);
+      return value.map(v => normalizeStr(v)).includes(normalizeStr(userAnswer));
     } else {
       if (Array.isArray(userAnswer)) {
-        return userAnswer.includes(value);
+        return userAnswer
+          .map(u => normalizeStr(u))
+          .includes(normalizeStr(value));
       }
-      return userAnswer === value;
+      return normalizeStr(userAnswer) === normalizeStr(value);
     }
   } else if (condition.not && condition.not.includes) {
     const { fact, value: notValues } = condition.not.includes;
@@ -187,12 +200,14 @@ function evaluateConditionPartial(condition, factValues) {
     const userAnswer = factValues[fact];
     if (Array.isArray(value)) {
       return Array.isArray(userAnswer)
-        ? userAnswer.some(u => value.includes(u))
-        : value.includes(userAnswer);
+        ? userAnswer.some(u =>
+            value.map(v => normalizeStr(v)).includes(normalizeStr(u))
+          )
+        : value.map(v => normalizeStr(v)).includes(normalizeStr(userAnswer));
     } else {
       return Array.isArray(userAnswer)
-        ? userAnswer.includes(value)
-        : userAnswer === value;
+        ? userAnswer.map(u => normalizeStr(u)).includes(normalizeStr(value))
+        : normalizeStr(userAnswer) === normalizeStr(value);
     }
   } else if (condition.not && condition.not.includes) {
     const { fact, value: notValues } = condition.not.includes;
@@ -221,6 +236,41 @@ function evaluateConditionPartial(condition, factValues) {
       : false;
   }
   return false;
+}
+
+/**
+ * Função auxiliar para obter o valor esperado de um fato em uma condição.
+ * Se a condição tiver um equals referente ao fato, retorna esse valor.
+ * Para condições compostas, procura recursivamente.
+ * Se a condição for um OR, retorna um array com os valores encontrados.
+ * Retorna null se nenhum valor for encontrado.
+ */
+function getExpectedValueForFact(condition, factName) {
+  if (condition.equals) {
+    if (condition.equals.fact === factName) {
+      return condition.equals.value;
+    }
+    return null;
+  } else if (condition.all) {
+    for (const subCondition of condition.all) {
+      const result = getExpectedValueForFact(subCondition, factName);
+      if (result !== null) return result;
+    }
+  } else if (condition.or) {
+    let values = [];
+    for (const subCondition of condition.or) {
+      const result = getExpectedValueForFact(subCondition, factName);
+      if (result !== null) {
+        if (Array.isArray(result)) {
+          values = values.concat(result);
+        } else {
+          values.push(result);
+        }
+      }
+    }
+    if (values.length > 0) return values;
+  }
+  return null;
 }
 
 /**
@@ -264,17 +314,47 @@ const submitAnswer = (req, res) => {
       }
     }
 
-    // Se houver mais de uma regra candidata, ou nenhuma única conclusiva, determine o próximo fato a ser perguntado
-    // Primeiro, agrupe os fatos necessários de todas as regras candidatas (união)
+    // Após extrair candidateRules e formar a união dos fatos necessários:
     const unionRequiredFacts = candidateRules.reduce((set, rule) => {
       extractFactsFromCondition(rule.condition).forEach(f => set.add(f));
       return set;
     }, new Set());
 
-    // Procura o próximo fato não respondido dentre os fatos relevantes para a diferenciação
-    const nextFact = Array.from(unionRequiredFacts).find(
-      f => !(f in dfaSession.factValues)
-    );
+    // Modificação na lógica para definir o próximo fato a ser perguntado
+    const nextFact = Array.from(unionRequiredFacts).find(f => {
+      // Se o fato ainda não foi respondido, ele é escolhido normalmente.
+      if (!(f in dfaSession.factValues)) return true;
+
+      // Se já foi respondido, verifique se os candidateRules que usam esse fato têm valores esperados
+      const candidateValues = candidateRules
+        .filter(rule => extractFactsFromCondition(rule.condition).includes(f))
+        .map(rule => getExpectedValueForFact(rule.condition, f))
+        .filter(val => val !== null);
+
+      // Achata os valores (caso haja arrays) e remove duplicatas
+      let flatValues = [];
+      candidateValues.forEach(val => {
+        if (Array.isArray(val)) {
+          flatValues = flatValues.concat(val);
+        } else {
+          flatValues.push(val);
+        }
+      });
+      flatValues = [...new Set(flatValues)];
+
+      // Se existir mais de um valor esperado, ou se o único valor não coincidir com a resposta atribuída,
+      // considera o fato como pendente para resolução.
+      if (
+        flatValues.length > 1 ||
+        (flatValues.length === 1 &&
+          normalizeStr(flatValues[0]) !==
+            normalizeStr(dfaSession.factValues[f]))
+      ) {
+        return true;
+      }
+
+      return false;
+    });
 
     if (nextFact) {
       return res.json({
