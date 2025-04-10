@@ -3,15 +3,10 @@ import axios from 'axios';
 
 const RuleBuilder = ({ onRuleCreated }) => {
   const [facts, setFacts] = useState([]);
-  // "conditions" stores each condition with the selected fact and its chosen value
   const [conditions, setConditions] = useState([{ factId: '', value: '' }]);
-  // "connectors" stores the connector ("E" or "OU") between conditions.
-  // It has one less element than conditions.
   const [connectors, setConnectors] = useState([]);
-  // "conclusion" is the text for the "ENTÃO" part.
   const [conclusion, setConclusion] = useState('');
 
-  // Fetch available facts for user selection.
   useEffect(() => {
     axios
       .get('http://localhost:3000/api/facts')
@@ -19,58 +14,51 @@ const RuleBuilder = ({ onRuleCreated }) => {
       .catch(error => console.error('Erro ao carregar fatos:', error));
   }, []);
 
-  // Adds a new empty condition.
   const addCondition = () => {
-    // For UI purposes, add connector as "E" by default.
     setConnectors([...connectors, 'E']);
     setConditions([...conditions, { factId: '', value: '' }]);
   };
 
-  // Removes a condition from the list.
   const removeCondition = index => {
-    // Always keep at least one condition.
     if (conditions.length === 1) {
       alert('Você deve ter pelo menos uma condição.');
       return;
     }
     const updatedConditions = conditions.filter((_, idx) => idx !== index);
     let updatedConnectors = [...connectors];
-
-    // Adjust connectors array based on the removed condition.
     if (index === 0) {
-      // Remove connector at index 0 since the first condition was removed.
       updatedConnectors = updatedConnectors.slice(1);
     } else {
-      // Remove the connector that linked previous condition to this one.
       updatedConnectors.splice(index - 1, 1);
     }
     setConditions(updatedConditions);
     setConnectors(updatedConnectors);
   };
 
-  // Update the selected fact for a specific condition.
   const updateConditionFact = (index, factId) => {
     const updatedConditions = conditions.map((cond, idx) => {
-      if (idx === index) {
-        return { ...cond, factId, value: '' };
-      }
+      if (idx === index) return { ...cond, factId, value: '' };
       return cond;
     });
     setConditions(updatedConditions);
   };
 
-  // Update the value for a specific condition.
   const updateConditionValue = (index, value) => {
     const updatedConditions = conditions.map((cond, idx) => {
-      if (idx === index) {
-        return { ...cond, value };
-      }
+      if (idx === index) return { ...cond, value };
       return cond;
     });
     setConditions(updatedConditions);
   };
 
-  // Update the connector for a given condition (connector between condition i and i+1).
+  const updateMultiConditionValue = (index, values) => {
+    const updatedConditions = conditions.map((cond, idx) => {
+      if (idx === index) return { ...cond, value: values };
+      return cond;
+    });
+    setConditions(updatedConditions);
+  };
+
   const updateConnector = (index, value) => {
     const updatedConnectors = connectors.map((conn, idx) => {
       if (idx === index) return value;
@@ -79,48 +67,66 @@ const RuleBuilder = ({ onRuleCreated }) => {
     setConnectors(updatedConnectors);
   };
 
-  // Transform the conditions and connectors into the nested structure the backend expects.
-  // This algorithm groups consecutive conditions connected with "OU" together.
+  // Exemplo de transformação para uma condição de igualdade
+  function transformCondition(cond) {
+    // Se o valor for um array (caso do fato string), usamos equals com valor array;
+    // caso contrário, permanece como string.
+    return {
+      equals: { fact: getFactNameById(cond.factId), value: cond.value },
+    };
+  }
+
   const transformConditions = () => {
     const allConditions = [];
-    // Transform a single condition into equals format.
     const transformCondition = cond => {
       const factObj = facts.find(f => f.id === cond.factId);
       const factName = factObj ? factObj.name : cond.factId;
       return { equals: { fact: factName, value: cond.value } };
     };
 
-    // Start with the first condition.
     let currentGroup = [transformCondition(conditions[0])];
 
-    // Iterate over the subsequent conditions.
     for (let i = 1; i < conditions.length; i++) {
-      const connector = connectors[i - 1]; // connector between (i-1) and i.
+      const connector = connectors[i - 1];
       const transformed = transformCondition(conditions[i]);
       if (connector === 'OU') {
-        // If connector is OU, add to the current group.
         currentGroup.push(transformed);
       } else if (connector === 'E') {
-        // Connector is E, finish the current group.
         if (currentGroup.length > 1) {
           allConditions.push({ or: currentGroup });
         } else {
           allConditions.push(currentGroup[0]);
         }
-        // Start a new group with the current condition.
         currentGroup = [transformed];
+      } else if (connector === 'NÃO') {
+        const factObj = facts.find(f => f.id === conditions[i].factId);
+        if (factObj && factObj.type !== 'string') {
+          alert('O conector NÃO só pode ser aplicado a fatos do tipo string.');
+          return;
+        }
+        if (currentGroup.length > 0) {
+          if (currentGroup.length > 1) {
+            allConditions.push({ or: currentGroup });
+          } else {
+            allConditions.push(currentGroup[0]);
+          }
+        }
+        const currentTransformed = transformCondition(conditions[i]); // { equals: { fact: factName, value: cond.value } }
+        const negated = { not: { includes: currentTransformed.equals } };
+        allConditions.push(negated);
+        currentGroup = [];
       }
     }
-    // Push the final group.
-    if (currentGroup.length > 1) {
-      allConditions.push({ or: currentGroup });
-    } else {
-      allConditions.push(currentGroup[0]);
+    if (currentGroup.length > 0) {
+      if (currentGroup.length > 1) {
+        allConditions.push({ or: currentGroup });
+      } else {
+        allConditions.push(currentGroup[0]);
+      }
     }
     return allConditions;
   };
 
-  // Submits the rule payload to the backend.
   const handleSubmit = async e => {
     e.preventDefault();
 
@@ -129,7 +135,6 @@ const RuleBuilder = ({ onRuleCreated }) => {
       return;
     }
 
-    // Validate every condition.
     for (let cond of conditions) {
       if (!cond.factId) {
         alert('Selecione um fato para cada condição.');
@@ -171,12 +176,18 @@ const RuleBuilder = ({ onRuleCreated }) => {
     <form onSubmit={handleSubmit} style={{ padding: '1rem' }}>
       <h3>Construir Regra</h3>
       {conditions.map((cond, index) => {
-        // Get the selected fact details for proper input.
         const selectedFact = facts.find(f => f.id === cond.factId);
         const hasPredefinedValues =
           selectedFact &&
           Array.isArray(selectedFact.possibleValues) &&
           selectedFact.possibleValues.length > 0;
+
+        // Se o conector anterior for "NÃO", filtrar para apenas fatos do tipo string.
+        const availableFacts =
+          index > 0 && connectors[index - 1] === 'NÃO'
+            ? facts.filter(f => f.type === 'string')
+            : facts;
+
         return (
           <div
             key={index}
@@ -197,6 +208,7 @@ const RuleBuilder = ({ onRuleCreated }) => {
                 >
                   <option value="E">E</option>
                   <option value="OU">OU</option>
+                  <option value="NÃO">NÃO</option>
                 </select>
                 <span style={{ marginRight: '0.5rem' }}>SE</span>
               </>
@@ -212,26 +224,52 @@ const RuleBuilder = ({ onRuleCreated }) => {
               required
             >
               <option value="">Selecione um fato</option>
-              {facts.map(fact => (
+              {availableFacts.map(fact => (
                 <option key={fact.id} value={fact.id}>
                   {fact.name} ({fact.type})
                 </option>
               ))}
             </select>
             {selectedFact && hasPredefinedValues ? (
-              <select
-                value={cond.value}
-                onChange={e => updateConditionValue(index, e.target.value)}
-                style={{ padding: '0.5rem', flex: 1, marginRight: '0.5rem' }}
-                required
-              >
-                <option value="">Selecione um valor</option>
-                {selectedFact.possibleValues.map((val, idx) => (
-                  <option key={idx} value={val}>
-                    {val}
-                  </option>
-                ))}
-              </select>
+              selectedFact.type === 'string' ? (
+                <select
+                  multiple
+                  value={cond.value || []}
+                  onChange={e =>
+                    updateMultiConditionValue(
+                      index,
+                      Array.from(
+                        e.target.selectedOptions,
+                        option => option.value
+                      )
+                    )
+                  }
+                  style={{ padding: '0.5rem', flex: 1, marginRight: '0.5rem' }}
+                  required
+                >
+                  {selectedFact.possibleValues
+                    .filter(val => typeof val === 'string')
+                    .map((val, idx) => (
+                      <option key={idx} value={val}>
+                        {val}
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <select
+                  value={cond.value}
+                  onChange={e => updateConditionValue(index, e.target.value)}
+                  style={{ padding: '0.5rem', flex: 1, marginRight: '0.5rem' }}
+                  required
+                >
+                  <option value="">Selecione um valor</option>
+                  {selectedFact.possibleValues.map((val, idx) => (
+                    <option key={idx} value={val}>
+                      {val}
+                    </option>
+                  ))}
+                </select>
+              )
             ) : (
               <input
                 type="text"

@@ -1,56 +1,19 @@
 {
   "projects": [
     {
-      "id": "1744246867146",
-      "name": "Super Heroi",
+      "id": "1744288896957",
+      "name": "Super Herois",
       "description": "",
       "facts": [],
       "rules": [
-        "1744246766152",
         "1744246786799",
         "1744246814096",
-        "1744246846632"
+        "1744246846632",
+        "1744288878873"
       ]
     }
   ],
   "rules": [
-    {
-      "id": "1744246766152",
-      "conclusion": "Super Homem",
-      "condition": {
-        "all": [
-          {
-            "or": [
-              {
-                "equals": {
-                  "fact": "voa",
-                  "value": "sim"
-                }
-              },
-              {
-                "equals": {
-                  "fact": "corre",
-                  "value": "sim"
-                }
-              }
-            ]
-          },
-          {
-            "equals": {
-              "fact": "usa capa",
-              "value": "sim"
-            }
-          },
-          {
-            "equals": {
-              "fact": "uniforme",
-              "value": "azul"
-            }
-          }
-        ]
-      },
-      "facts": []
-    },
     {
       "id": "1744246786799",
       "conclusion": "Batman",
@@ -126,6 +89,57 @@
             "equals": {
               "fact": "anel",
               "value": "sim"
+            }
+          }
+        ]
+      },
+      "facts": []
+    },
+    {
+      "id": "1744288878873",
+      "conclusion": "Super Homem",
+      "condition": {
+        "all": [
+          {
+            "or": [
+              {
+                "equals": {
+                  "fact": "voa",
+                  "value": "sim"
+                }
+              },
+              {
+                "equals": {
+                  "fact": "corre",
+                  "value": "sim"
+                }
+              }
+            ]
+          },
+          {
+            "equals": {
+              "fact": "uniforme",
+              "value": [
+                "vermelho",
+                "azul"
+              ]
+            }
+          },
+          {
+            "equals": {
+              "fact": "usa capa",
+              "value": "sim"
+            }
+          },
+          {
+            "not": {
+              "includes": {
+                "fact": "uniforme",
+                "value": [
+                  "preto",
+                  "verde"
+                ]
+              }
             }
           }
         ]

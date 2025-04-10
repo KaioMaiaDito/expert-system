@@ -68,9 +68,9 @@ const startSession = (req, res) => {
 
     const sampleData = loadSampleData();
 
-    // Filtra o projeto pelo ID
+    // Filtra o projeto pelo ID (corrigido)
     const project = sampleData.projects.find(
-      project => project.id === projectId.projectId
+      project => project.id === projectId
     );
 
     if (!project) {
@@ -136,12 +136,31 @@ const startSession = (req, res) => {
 
 /**
  * Função auxiliar para avaliar uma condição recursivamente com base nos valores informados.
- * Suporta: equals, all e or.
+ * Suporta: equals, not.includes, all e or.
  */
 function evaluateCondition(condition, factValues) {
   if (condition.equals) {
     const { fact, value } = condition.equals;
-    return factValues[fact] === value;
+    const userAnswer = factValues[fact];
+    if (Array.isArray(value)) {
+      // Verifica interseção caso o valor esperado seja um array
+      if (Array.isArray(userAnswer)) {
+        return userAnswer.some(u => value.includes(u));
+      }
+      return value.includes(userAnswer);
+    } else {
+      if (Array.isArray(userAnswer)) {
+        return userAnswer.includes(value);
+      }
+      return userAnswer === value;
+    }
+  } else if (condition.not && condition.not.includes) {
+    const { fact, value: notValues } = condition.not.includes;
+    const userAnswer = factValues[fact];
+    if (Array.isArray(userAnswer)) {
+      return !userAnswer.some(ua => notValues.includes(ua));
+    }
+    return !notValues.includes(userAnswer);
   } else if (condition.all) {
     return condition.all.every(subCondition =>
       evaluateCondition(subCondition, factValues)
@@ -174,7 +193,7 @@ const submitAnswer = (req, res) => {
       });
     }
 
-    // Atualiza o valor do fato respondido
+    // Atualiza o valor do fato respondido (aceita string ou array)
     dfaSession.factValues[fact] = value;
 
     // Determina o próximo fato pendente a partir do fluxo linear.
@@ -206,17 +225,37 @@ const submitAnswer = (req, res) => {
         }
       }
       if (matchedRule) {
-        return res.json({
-          finished: true,
-          factValues: dfaSession.factValues,
-          message: matchedRule.conclusion,
-        });
+        if (typeof matchedRule.conclusion === 'string') {
+          return res.json({
+            finished: true,
+            factValues: dfaSession.factValues,
+            message: matchedRule.conclusion,
+          });
+        } else {
+          return res.json({
+            finished: true,
+            factValues: dfaSession.factValues,
+            message: 'Regra inválida: conclusão não é do tipo string.',
+          });
+        }
       } else {
-        return res.json({
-          finished: true,
-          factValues: dfaSession.factValues,
-          message: 'Nenhuma regra foi satisfeita com os valores informados.',
-        });
+        // Se nenhuma regra satisfeita, verifica se existe uma alternativa via elseConclusion.
+        const elseRule = rules.find(
+          rule => typeof rule.elseConclusion === 'string'
+        );
+        if (elseRule) {
+          return res.json({
+            finished: true,
+            factValues: dfaSession.factValues,
+            message: elseRule.elseConclusion,
+          });
+        } else {
+          return res.json({
+            finished: true,
+            factValues: dfaSession.factValues,
+            message: 'Nenhuma regra foi satisfeita com os valores informados.',
+          });
+        }
       }
     }
   } catch (err) {
