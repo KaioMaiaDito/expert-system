@@ -176,40 +176,32 @@ function evaluateCondition(condition, factValues) {
 /**
  * Função auxiliar para avaliação parcial de uma condição.
  * Retorna:
- *   - true: se a condição pode ser considerada definitivamente satisfeita com as respostas atuais.
- *   - false: se a condição pode ser considerada definitivamente falsa.
- *   - undefined: se não há respostas suficientes para uma conclusão.
+ *   - true: se a condição está definitivamente satisfeita.
+ *   - false: se a condição está definitivamente falsa.
+ *   - undefined: se não há respostas suficientes.
  */
 function evaluateConditionPartial(condition, factValues) {
   if (condition.equals) {
     const { fact, value } = condition.equals;
-    if (factValues.hasOwnProperty(fact)) {
-      const userAnswer = factValues[fact];
-      if (Array.isArray(value)) {
-        if (Array.isArray(userAnswer)) {
-          return userAnswer.some(u => value.includes(u));
-        }
-        return value.includes(userAnswer);
-      } else {
-        if (Array.isArray(userAnswer)) {
-          return userAnswer.includes(value);
-        }
-        return userAnswer === value;
-      }
+    if (!(fact in factValues)) return undefined;
+    const userAnswer = factValues[fact];
+    if (Array.isArray(value)) {
+      return Array.isArray(userAnswer)
+        ? userAnswer.some(u => value.includes(u))
+        : value.includes(userAnswer);
     } else {
-      return undefined;
+      return Array.isArray(userAnswer)
+        ? userAnswer.includes(value)
+        : userAnswer === value;
     }
   } else if (condition.not && condition.not.includes) {
     const { fact, value: notValues } = condition.not.includes;
-    if (factValues.hasOwnProperty(fact)) {
-      const userAnswer = factValues[fact];
-      if (Array.isArray(userAnswer)) {
-        return !userAnswer.some(ua => notValues.includes(ua));
-      }
-      return !notValues.includes(userAnswer);
-    } else {
-      return undefined;
+    if (!(fact in factValues)) return undefined;
+    const userAnswer = factValues[fact];
+    if (Array.isArray(userAnswer)) {
+      return !userAnswer.some(ua => notValues.includes(ua));
     }
+    return !notValues.includes(userAnswer);
   } else if (condition.all) {
     let result = true;
     for (const subCondition of condition.all) {
@@ -219,22 +211,20 @@ function evaluateConditionPartial(condition, factValues) {
     }
     return result;
   } else if (condition.or) {
-    let foundUndefined = false;
-    for (const subCondition of condition.or) {
-      const subResult = evaluateConditionPartial(subCondition, factValues);
-      if (subResult === true) return true;
-      if (subResult === undefined) foundUndefined = true;
-    }
-    return foundUndefined ? undefined : false;
+    const subResults = condition.or.map(subCondition =>
+      evaluateConditionPartial(subCondition, factValues)
+    );
+    return subResults.includes(true)
+      ? true
+      : subResults.includes(undefined)
+      ? undefined
+      : false;
   }
   return false;
 }
 
 /**
- * Controller para processar a resposta do usuário e retornar a próxima pergunta ou o resultado final.
- * - Atualiza os valores dos fatos na sessão.
- * - Se, após uma resposta, alguma regra for definitivamente verdadeira (com partial evaluation), retorna a conclusão.
- * - Caso contrário, solicita o próximo fato.
+ * Controller para processar a resposta do usuário e retornar o próximo fato ou a conclusão.
  */
 const submitAnswer = (req, res) => {
   try {
@@ -250,56 +240,68 @@ const submitAnswer = (req, res) => {
       });
     }
 
-    // Atualiza o valor do fato respondido (aceitando string ou array)
+    // Atualiza o fato respondido
     dfaSession.factValues[fact] = value;
 
-    // Verifica se alguma regra do projeto já pode ser considerada definitivamente satisfeita
-    for (let rule of dfaSession.projectRules) {
-      const result = evaluateConditionPartial(
-        rule.condition,
-        dfaSession.factValues
+    // Filtra as regras que ainda são possíveis (não descartadas pela avaliação parcial)
+    const candidateRules = dfaSession.projectRules.filter(
+      rule =>
+        evaluateConditionPartial(rule.condition, dfaSession.factValues) !==
+        false
+    );
+
+    // Se houver apenas uma regra candidata e ela possui todos os fatos necessários, finaliza
+    if (candidateRules.length === 1) {
+      const requiredFacts = extractFactsFromCondition(
+        candidateRules[0].condition
       );
-      if (result === true) {
+      if (requiredFacts.every(f => f in dfaSession.factValues)) {
         return res.json({
           finished: true,
           factValues: dfaSession.factValues,
-          message: rule.conclusion,
+          message: candidateRules[0].conclusion,
         });
       }
     }
 
-    // Determina o próximo fato pendente a partir do fluxo linear.
-    const index = dfaSession.dfa.facts.indexOf(fact);
-    let nextIndex = index + 1;
-    while (
-      nextIndex < dfaSession.dfa.total &&
-      dfaSession.factValues.hasOwnProperty(dfaSession.dfa.facts[nextIndex])
-    ) {
-      nextIndex++;
-    }
+    // Se houver mais de uma regra candidata, ou nenhuma única conclusiva, determine o próximo fato a ser perguntado
+    // Primeiro, agrupe os fatos necessários de todas as regras candidatas (união)
+    const unionRequiredFacts = candidateRules.reduce((set, rule) => {
+      extractFactsFromCondition(rule.condition).forEach(f => set.add(f));
+      return set;
+    }, new Set());
 
-    if (nextIndex < dfaSession.dfa.total) {
-      const nextFact = dfaSession.dfa.facts[nextIndex];
+    // Procura o próximo fato não respondido dentre os fatos relevantes para a diferenciação
+    const nextFact = Array.from(unionRequiredFacts).find(
+      f => !(f in dfaSession.factValues)
+    );
+
+    if (nextFact) {
       return res.json({
         finished: false,
         nextQuestion: `Qual o valor para "${nextFact}"?`,
         possibleValues: getPossibleValuesForFact(nextFact),
       });
     } else {
-      // Se todas as perguntas foram respondidas, avalia definitivamente as regras do projeto.
-      const rules = dfaSession.projectRules || loadSampleData().rules;
-      let matchedRule = null;
-      for (let rule of rules) {
-        if (evaluateCondition(rule.condition, dfaSession.factValues)) {
-          matchedRule = rule;
-          break;
-        }
-      }
-      if (matchedRule) {
+      // Se todos os fatos relevantes para as regras candidatas foram respondidos,
+      // usa a avaliação completa para selecionar a regra final.
+      // Em vez de usar find() simples, filtra as regras que realmente são satisfeitas
+      // e escolhe a que tem maior "especificidade" (mais fatos necessários).
+      const validCandidates = candidateRules.filter(
+        rule =>
+          evaluateCondition(rule.condition, dfaSession.factValues) === true
+      );
+      if (validCandidates.length > 0) {
+        validCandidates.sort(
+          (a, b) =>
+            extractFactsFromCondition(b.condition).length -
+            extractFactsFromCondition(a.condition).length
+        );
+        const finalRule = validCandidates[0];
         return res.json({
           finished: true,
           factValues: dfaSession.factValues,
-          message: matchedRule.conclusion,
+          message: finalRule.conclusion,
         });
       } else {
         return res.json({
@@ -310,9 +312,10 @@ const submitAnswer = (req, res) => {
       }
     }
   } catch (err) {
-    return res
-      .status(500)
-      .json({ error: 'Erro ao processar a resposta.', details: err.message });
+    return res.status(500).json({
+      error: 'Erro ao processar a resposta.',
+      details: err.message,
+    });
   }
 };
 
