@@ -14,6 +14,15 @@ function loadSampleData() {
 }
 
 /**
+ * Função para normalizar strings (removendo acentos)
+ */
+function normalizeStr(str) {
+  return typeof str === 'string'
+    ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    : str;
+}
+
+/**
  * Função auxiliar para extrair os fatos de uma condição recursivamente.
  * Lida com as chaves equals, all e or.
  */
@@ -68,9 +77,9 @@ const startSession = (req, res) => {
 
     const sampleData = loadSampleData();
 
-    // Filtra o projeto pelo ID
+    // Filtra o projeto pelo ID (corrigido)
     const project = sampleData.projects.find(
-      project => project.id === projectId.projectId
+      project => project.id === projectId
     );
 
     if (!project) {
@@ -136,12 +145,35 @@ const startSession = (req, res) => {
 
 /**
  * Função auxiliar para avaliar uma condição recursivamente com base nos valores informados.
- * Suporta: equals, all e or.
+ * Suporta: equals, not.includes, all e or.
  */
 function evaluateCondition(condition, factValues) {
   if (condition.equals) {
     const { fact, value } = condition.equals;
-    return factValues[fact] === value;
+    const userAnswer = dfaSession.factValues[fact];
+    if (Array.isArray(value)) {
+      if (Array.isArray(userAnswer)) {
+        // Compara normalizando cada valor
+        return userAnswer.some(u =>
+          value.map(v => normalizeStr(v)).includes(normalizeStr(u))
+        );
+      }
+      return value.map(v => normalizeStr(v)).includes(normalizeStr(userAnswer));
+    } else {
+      if (Array.isArray(userAnswer)) {
+        return userAnswer
+          .map(u => normalizeStr(u))
+          .includes(normalizeStr(value));
+      }
+      return normalizeStr(userAnswer) === normalizeStr(value);
+    }
+  } else if (condition.not && condition.not.includes) {
+    const { fact, value: notValues } = condition.not.includes;
+    const userAnswer = factValues[fact];
+    if (Array.isArray(userAnswer)) {
+      return !userAnswer.some(ua => notValues.includes(ua));
+    }
+    return !notValues.includes(userAnswer);
   } else if (condition.all) {
     return condition.all.every(subCondition =>
       evaluateCondition(subCondition, factValues)
@@ -155,10 +187,67 @@ function evaluateCondition(condition, factValues) {
 }
 
 /**
+ * Função auxiliar para avaliação parcial de uma condição.
+ * Retorna:
+ *   - true: se a condição pode ser considerada definitivamente satisfeita com as respostas atuais.
+ *   - false: se a condição pode ser considerada definitivamente falsa.
+ *   - undefined: se não há respostas suficientes para uma conclusão.
+ */
+function evaluateConditionPartial(condition, factValues) {
+  if (condition.equals) {
+    const { fact, value } = condition.equals;
+    if (factValues.hasOwnProperty(fact)) {
+      const userAnswer = factValues[fact];
+      if (Array.isArray(value)) {
+        if (Array.isArray(userAnswer)) {
+          return userAnswer.some(u => value.includes(u));
+        }
+        return value.includes(userAnswer);
+      } else {
+        if (Array.isArray(userAnswer)) {
+          return userAnswer.includes(value);
+        }
+        return userAnswer === value;
+      }
+    } else {
+      return undefined;
+    }
+  } else if (condition.not && condition.not.includes) {
+    const { fact, value: notValues } = condition.not.includes;
+    if (factValues.hasOwnProperty(fact)) {
+      const userAnswer = factValues[fact];
+      if (Array.isArray(userAnswer)) {
+        return !userAnswer.some(ua => notValues.includes(ua));
+      }
+      return !notValues.includes(userAnswer);
+    } else {
+      return undefined;
+    }
+  } else if (condition.all) {
+    let result = true;
+    for (const subCondition of condition.all) {
+      const subResult = evaluateConditionPartial(subCondition, factValues);
+      if (subResult === false) return false;
+      if (subResult === undefined) result = undefined;
+    }
+    return result;
+  } else if (condition.or) {
+    let foundUndefined = false;
+    for (const subCondition of condition.or) {
+      const subResult = evaluateConditionPartial(subCondition, factValues);
+      if (subResult === true) return true;
+      if (subResult === undefined) foundUndefined = true;
+    }
+    return foundUndefined ? undefined : false;
+  }
+  return false;
+}
+
+/**
  * Controller para processar a resposta do usuário e retornar a próxima pergunta ou o resultado final.
  * - Atualiza os valores dos fatos na sessão.
- * - Se ainda houver fatos pendentes, retorna o próximo fato juntamente com os possibleValues.
- * - Se todas as perguntas foram respondidas, avalia as regras e retorna a conclusão da primeira regra satisfeita.
+ * - Se, após uma resposta, alguma regra for definitivamente verdadeira (com partial evaluation), retorna a conclusão.
+ * - Caso contrário, solicita o próximo fato.
  */
 const submitAnswer = (req, res) => {
   try {
@@ -174,8 +263,23 @@ const submitAnswer = (req, res) => {
       });
     }
 
-    // Atualiza o valor do fato respondido
+    // Atualiza o valor do fato respondido (aceitando string ou array)
     dfaSession.factValues[fact] = value;
+
+    // Verifica se alguma regra do projeto já pode ser considerada definitivamente satisfeita
+    for (let rule of dfaSession.projectRules) {
+      const result = evaluateConditionPartial(
+        rule.condition,
+        dfaSession.factValues
+      );
+      if (result === true) {
+        return res.json({
+          finished: true,
+          factValues: dfaSession.factValues,
+          message: rule.conclusion,
+        });
+      }
+    }
 
     // Determina o próximo fato pendente a partir do fluxo linear.
     const index = dfaSession.dfa.facts.indexOf(fact);
@@ -195,10 +299,9 @@ const submitAnswer = (req, res) => {
         possibleValues: getPossibleValuesForFact(nextFact),
       });
     } else {
-      // Todas as perguntas foram respondidas. Avalia as regras do projeto.
+      // Se todas as perguntas foram respondidas, avalia definitivamente as regras do projeto.
       const rules = dfaSession.projectRules || loadSampleData().rules;
       let matchedRule = null;
-
       for (let rule of rules) {
         if (evaluateCondition(rule.condition, dfaSession.factValues)) {
           matchedRule = rule;
